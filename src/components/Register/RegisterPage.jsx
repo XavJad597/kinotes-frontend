@@ -1,20 +1,36 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import RegisterForm from './RegisterForm'
+import authService from '../../services/AuthService'
+import RegistrationModel from '../../models/RegistrationModel'
 
 function RegisterPage() {
   const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleRegister = (userData) => {
-    // TODO: Implement actual registration logic
-    // For now, just simulate successful registration and navigate to login
-    console.log('Registering user:', userData)
-    
-    // Simulate registration success
-    setTimeout(() => {
-      alert('Registration successful! Please login.')
-      navigate('/login')
-    }, 500)
+  const handleRegister = async (userData) => {
+    setIsLoading(true)
+    setError('')
+
+    try {
+      // Create RegistrationModel from form data
+      const registrationData = RegistrationModel.fromFormData(userData)
+      
+      // Call AuthService to register
+      const authResponse = await authService.register(registrationData)
+      
+      console.log('Registration successful:', authResponse.username)
+      
+      // Navigate to home page on success (user is automatically logged in)
+      navigate('/')
+    } catch (err) {
+      console.error('Registration failed:', err)
+      setError(err.message || 'Registration failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -41,8 +57,19 @@ function RegisterPage() {
             </p>
           </motion.div>
 
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+
           {/* Register Form */}
-          <RegisterForm onSubmit={handleRegister} />
+          <RegisterForm onSubmit={handleRegister} isLoading={isLoading} />
         </div>
 
         {/* Footer */}

@@ -1,8 +1,9 @@
 import { Navigate } from 'react-router-dom'
+import authService from '../../services/AuthService'
 
 function ProtectedRoute({ children }) {
-  // Check if user is authenticated (simple localStorage check for now)
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+  // Check if user is authenticated using JWT token
+  const isAuthenticated = authService.isAuthenticated()
 
   if (!isAuthenticated) {
     // Redirect to login if not authenticated

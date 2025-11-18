@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import InputField from '../Shared/InputField'
 
-function RegisterForm({ onSubmit }) {
+function RegisterForm({ onSubmit, isLoading = false }) {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -35,9 +35,9 @@ function RegisterForm({ onSubmit }) {
       return
     }
 
-    // Password strength check
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long')
+    // Password strength check (backend requires at least 8 characters)
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long')
       return
     }
 
@@ -87,7 +87,7 @@ function RegisterForm({ onSubmit }) {
         name="password"
         value={formData.password}
         onChange={handleChange}
-        placeholder="Create a password (min. 6 characters)"
+        placeholder="Create a password (min. 8 characters)"
         required
       />
 
@@ -103,11 +103,14 @@ function RegisterForm({ onSubmit }) {
 
       <motion.button
         type="submit"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+        disabled={isLoading}
+        whileHover={{ scale: isLoading ? 1 : 1.02 }}
+        whileTap={{ scale: isLoading ? 1 : 0.98 }}
+        className={`w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ${
+          isLoading ? 'opacity-70 cursor-not-allowed' : ''
+        }`}
       >
-        Register
+        {isLoading ? 'Creating Account...' : 'Register'}
       </motion.button>
 
       <div className="text-center text-sm text-gray-600">

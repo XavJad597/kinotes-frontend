@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import InputField from '../Shared/InputField'
 
-function LoginForm({ onSubmit }) {
+function LoginForm({ onSubmit, isLoading = false }) {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -79,11 +79,14 @@ function LoginForm({ onSubmit }) {
 
       <motion.button
         type="submit"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+        disabled={isLoading}
+        whileHover={{ scale: isLoading ? 1 : 1.02 }}
+        whileTap={{ scale: isLoading ? 1 : 0.98 }}
+        className={`w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ${
+          isLoading ? 'opacity-70 cursor-not-allowed' : ''
+        }`}
       >
-        Login
+        {isLoading ? 'Logging in...' : 'Login'}
       </motion.button>
 
       <div className="text-center text-sm text-gray-600">

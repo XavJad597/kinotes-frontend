@@ -1,21 +1,36 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import LoginForm from './LoginForm'
+import authService from '../../services/AuthService'
+import LoginModel from '../../models/LoginModel'
 
 function LoginPage() {
   const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleLogin = (credentials) => {
-    // TODO: Implement actual authentication logic
-    // For now, just simulate successful login and navigate to home
-    console.log('Logging in with:', credentials)
-    
-    // Simulate authentication success
-    setTimeout(() => {
-      // Store a simple auth flag (will be replaced with proper auth later)
-      localStorage.setItem('isAuthenticated', 'true')
+  const handleLogin = async (credentials) => {
+    setIsLoading(true)
+    setError('')
+
+    try {
+      // Create LoginModel from form data
+      const loginData = LoginModel.fromFormData(credentials)
+      
+      // Call AuthService to login
+      const authResponse = await authService.login(loginData)
+      
+      console.log('Login successful:', authResponse.username)
+      
+      // Navigate to home page on success
       navigate('/')
-    }, 500)
+    } catch (err) {
+      console.error('Login failed:', err)
+      setError(err.message || 'Login failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -42,8 +57,19 @@ function LoginPage() {
             </p>
           </motion.div>
 
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+
           {/* Login Form */}
-          <LoginForm onSubmit={handleLogin} />
+          <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
         </div>
 
         {/* Footer */}
