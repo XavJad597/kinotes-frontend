@@ -1,28 +1,93 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Paperclip, LogOut } from 'lucide-react'
+import { Trash2, Paperclip, LogOut, Loader } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import noteService from '../../services/NoteService'
+import authService from '../../services/AuthService'
+import NoteRequestModel from '../../models/NoteRequestModel'
 
 function HomePage() {
   const navigate = useNavigate()
   const [noteText, setNoteText] = useState('')
   const [notes, setNotes] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSaveNote = () => {
-    if (noteText.trim() === '') return
+  // Fetch notes on component mount
+  useEffect(() => {
+    fetchNotes()
+  }, [])
+
+  const fetchNotes = async () => {
+    setIsLoading(true)
+    setError('')
     
-    const newNote = {
-      id: Date.now(),
-      content: noteText,
-      createdAt: new Date().toLocaleString()
+    try {
+      const currentUser = authService.getCurrentUser()
+      if (!currentUser || !currentUser.userId) {
+        throw new Error('User not authenticated')
+      }
+
+      // Fetch notes for current user
+      const fetchedNotes = await noteService.getNotesByUserId(currentUser.userId)
+      setNotes(fetchedNotes)
+    } catch (err) {
+      console.error('Failed to fetch notes:', err)
+      setError(err.message || 'Failed to load notes')
+    } finally {
+      setIsLoading(false)
     }
-    
-    setNotes([newNote, ...notes])
-    setNoteText('')
   }
 
-  const handleDeleteNote = (id) => {
-    setNotes(notes.filter(note => note.id !== id))
+  const handleSaveNote = async () => {
+    if (noteText.trim() === '') return
+    
+    setIsSaving(true)
+    setError('')
+
+    try {
+      const currentUser = authService.getCurrentUser()
+      if (!currentUser || !currentUser.userId) {
+        throw new Error('You must be logged in to create a note')
+      }
+
+      // Create note request with title as first line or "Quick Note"
+      const lines = noteText.trim().split('\n')
+      const title = lines[0].substring(0, 255) || 'Quick Note'
+      const content = noteText.trim()
+
+      const noteRequest = NoteRequestModel.create(
+        title,
+        content,
+        currentUser.userId,
+        []
+      )
+
+      const createdNote = await noteService.createNote(noteRequest)
+      
+      if (!createdNote.createdAt) {
+        createdNote.createdAt = new Date().toISOString()
+      }
+      
+      setNotes([createdNote, ...notes])
+      setNoteText('')
+    } catch (err) {
+      console.error('Failed to save note:', err)
+      setError(err.message || 'Failed to save note')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteNote = async (id) => {
+    try {
+      await noteService.deleteNote(id)
+      setNotes(notes.filter(note => note.id !== id))
+    } catch (err) {
+      console.error('Failed to delete note:', err)
+      alert('Failed to delete note: ' + err.message)
+    }
   }
 
   const handleKeyPress = (e) => {
@@ -32,7 +97,7 @@ function HomePage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated')
+    authService.logout()
     navigate('/login')
   }
 
@@ -78,21 +143,43 @@ function HomePage() {
               onChange={(e) => setNoteText(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="What's on your mind? (Ctrl+Enter to save)"
-              className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl resize-none focus:outline-none focus:border-purple-500 transition-colors text-gray-800 placeholder-gray-400"
+              disabled={isSaving}
+              className="w-full h-32 p-4 border-2 border-gray-200 rounded-xl resize-none focus:outline-none focus:border-purple-500 transition-colors text-gray-800 placeholder-gray-400 disabled:opacity-50"
             />
+            
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"
+              >
+                {error}
+              </motion.div>
+            )}
+
             <div className="flex justify-end mt-4">
               <button
                 onClick={handleSaveNote}
-                disabled={noteText.trim() === ''}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                disabled={noteText.trim() === '' || isSaving}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
               >
-                Save Note
+                {isSaving && <Loader className="animate-spin" size={18} />}
+                {isSaving ? 'Saving...' : 'Save Note'}
               </button>
             </div>
           </motion.div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader className="animate-spin text-white" size={32} />
+              <span className="ml-3 text-white">Loading your notes...</span>
+            </div>
+          )}
+
           {/* Notes Display Grid */}
-          {notes.length > 0 && (
+          {!isLoading && notes.length > 0 && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -121,13 +208,19 @@ function HomePage() {
                         <Trash2 size={18} />
                       </button>
 
-                      {/* Note Content */}
                       <div className="pr-8">
+                        {note.title && note.title !== note.content?.substring(0, note.title.length) && (
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {note.title}
+                          </h3>
+                        )}
+                        
                         <p className="text-gray-800 whitespace-pre-wrap break-words mb-3">
                           {note.content}
                         </p>
+                        
                         <p className="text-xs text-gray-400 mt-2">
-                          {note.createdAt}
+                          {note.getFormattedCreatedAt ? note.getFormattedCreatedAt() : new Date(note.createdAt).toLocaleString()}
                         </p>
                       </div>
                     </motion.div>
@@ -137,8 +230,8 @@ function HomePage() {
             </motion.div>
           )}
 
-          {/* Empty State */}
-          {notes.length === 0 && (
+
+          {!isLoading && notes.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -153,7 +246,6 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Upload Bar (ChatGPT-style) */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

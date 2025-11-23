@@ -45,12 +45,6 @@ async login(loginData) {
     }
 }
 
-/**
-   * Register new user
-   * @param {RegistrationModel} registrationData - Registration data
-   * @returns {Promise<AuthResponseModel>}
-   * @throws {Error} If registration fails
-   */
 async register(registrationData) {
     try {
       // Validate registration data

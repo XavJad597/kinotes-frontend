@@ -3,10 +3,11 @@
  * Matches the backend AuthResponse DTO
  */
 class AuthResponseModel {
-  constructor(token, username, role) {
+  constructor(token, username, role, userId) {
     this.token = token
     this.username = username
     this.role = role
+    this.userId = userId // UUID
   }
 
   /**
@@ -15,7 +16,7 @@ class AuthResponseModel {
    * @returns {AuthResponseModel}
    */
   static fromJSON(data) {
-    return new AuthResponseModel(data.token, data.username, data.role)
+    return new AuthResponseModel(data.token, data.username, data.role, data.userId)
   }
 
   /**
@@ -25,6 +26,7 @@ class AuthResponseModel {
     localStorage.setItem('authToken', this.token)
     localStorage.setItem('username', this.username)
     localStorage.setItem('userRole', this.role)
+    localStorage.setItem('userId', this.userId)
     localStorage.setItem('isAuthenticated', 'true')
   }
 
@@ -36,9 +38,10 @@ class AuthResponseModel {
     const token = localStorage.getItem('authToken')
     const username = localStorage.getItem('username')
     const role = localStorage.getItem('userRole')
+    const userId = localStorage.getItem('userId')
 
-    if (token && username && role) {
-      return new AuthResponseModel(token, username, role)
+    if (token && username && role && userId) {
+      return new AuthResponseModel(token, username, role, userId)
     }
 
     return null
@@ -51,6 +54,7 @@ class AuthResponseModel {
     localStorage.removeItem('authToken')
     localStorage.removeItem('username')
     localStorage.removeItem('userRole')
+    localStorage.removeItem('userId')
     localStorage.removeItem('isAuthenticated')
   }
 
